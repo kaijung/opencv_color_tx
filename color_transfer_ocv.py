@@ -7,18 +7,25 @@ import utils
 
 MIN_LIGHT_VALUE = 15
 MAX_LIGHT_VALUE = 230
+MAX_SAMPLE_COLS = 300
 
 
-def color_kmeans(src_im, n_clusters=3):
-    rows, cols, channels = src_im.shape
-    img_lab = cv2.cvtColor(src_im, cv2.COLOR_BGR2LAB)
+def color_kmeans(src_bg_im, n_clusters=3):
+    rows, cols, channels = src_bg_im.shape
+    if cols > MAX_SAMPLE_COLS:
+        ratio = float(MAX_SAMPLE_COLS) / cols
+        size = (MAX_SAMPLE_COLS, int(ratio * rows))
+        src_bg_im = cv2.resize(src_bg_im, size)
+
+    rows, cols, channels = src_bg_im.shape
+    img_lab = cv2.cvtColor(src_bg_im, cv2.COLOR_BGR2LAB)
     img_lab = img_lab.reshape((rows * cols, channels))
 
     # print 'src_im:', rows, cols, src_im.dtype
     # print 'img_lab:', img_lab.shape, img_lab.dtype
 
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 10, 1.0)
+    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 8, 1.0)
     # Set flags (Just to avoid line break in the code)
     flags = cv2.KMEANS_RANDOM_CENTERS
 
@@ -54,10 +61,6 @@ def color_transfer(src_mean, src_stddev, dst_img, dst_masks):
             dst_channels[ch] = np.clip(dst_channels[ch] + src_mean[i][ch], 0, 255)
 
         out = np.uint8(cv2.merge(dst_channels))
-        # for debug
-        # tmp_im = cv2.cvtColor(out, cv2.COLOR_LAB2BGR)
-        # cv2.imwrite('images/tmp_im.jpg', tmp_im)
-
         img_fg = cv2.bitwise_and(out, out, mask=mask)
         out_images.append(img_fg)
 
@@ -70,13 +73,16 @@ def color_transfer(src_mean, src_stddev, dst_img, dst_masks):
 def normal_clone(img_fg, img_bg, mask_fg):
     rows_fg, cols_fg, _ = img_fg.shape
     rows_bg, cols_bg, _ = img_bg.shape
-    half_cols_bg = cols_bg / 2
+
+    # Create an all white mask
+    # mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
     mask_fg = cv2.cvtColor(mask_fg, cv2.COLOR_BGR2GRAY)
 
     # print 'fg shape:', rows_fg, cols_fg
     # print 'bg shape:', rows_bg, cols_bg
     # print 'half_cols_bg:', half_cols_bg
 
+    half_cols_bg = cols_bg / 2
     if cols_fg > half_cols_bg:
         ratio = float(half_cols_bg) / cols_fg
         size = (half_cols_bg, int(ratio * rows_fg))
@@ -84,15 +90,18 @@ def normal_clone(img_fg, img_bg, mask_fg):
         img_fg = cv2.resize(img_fg, size)
         mask_fg = cv2.resize(mask_fg, size)
 
-    # Create an all white mask
-    # mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
     # The location of the center of the src in the dst
     center = (cols_bg / 2, rows_bg / 2)
 
     # Seamlessly clone src into dst and put the results in output
-    # cloned_im = cv2.seamlessClone(obj, im, mask, center, cv2.MIXED_CLONE)
     cloned_im = cv2.seamlessClone(img_fg, img_bg, mask_fg, center, cv2.NORMAL_CLONE)
     return cloned_im
+
+
+def print_time(msg, start_t):
+    end_t = cv2.getTickCount()
+    took_time = 1000 * (end_t - start_t) / cv2.getTickFrequency()
+    print '%s. I took %d ms' % (msg, took_time)
 
 
 if __name__ == '__main__':
@@ -102,29 +111,37 @@ if __name__ == '__main__':
 
     mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
     mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
+    full_mask = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
 
+    start_t = cv2.getTickCount()
     hist, centers, stddev = color_kmeans(src, n_clusters=4)
-    bar = utils.plot_colors_lab(hist, centers)
 
-    mask_gray = cv2.cvtColor(mask_im, cv2.COLOR_BGR2GRAY)
-    mask1_gray = cv2.cvtColor(mask1_im, cv2.COLOR_BGR2GRAY)
+    print_time('Color Kmeans done', start_t)
 
-    ret, mask = cv2.threshold(mask_gray, 10, 255, cv2.THRESH_BINARY)
-    ret, mask1 = cv2.threshold(mask1_gray, 10, 255, cv2.THRESH_BINARY)
-    full_mask = cv2.bitwise_or(mask, mask1)
-    full_mask_inv = cv2.bitwise_not(full_mask)
+    mask = cv2.cvtColor(mask_im, cv2.COLOR_BGR2GRAY)
+    mask1 = cv2.cvtColor(mask1_im, cv2.COLOR_BGR2GRAY)
+
+    merged_mask = cv2.bitwise_or(mask, mask1)
+    merged_mask_inv = cv2.bitwise_not(merged_mask)
 
     output = color_transfer(centers, stddev, dst, (mask, mask1))
 
-    img_fg = cv2.bitwise_and(output, output, mask=full_mask)
-    img_bg = cv2.bitwise_and(dst, dst, mask=full_mask_inv)
+    print_time('Color transferred', start_t)
+
+    img_fg = cv2.bitwise_and(output, output, mask=merged_mask)
+    img_bg = cv2.bitwise_and(dst, dst, mask=merged_mask_inv)
     output = cv2.add(img_bg, img_fg)
 
-    full_mask1 = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
-    cloned = normal_clone(output, src, full_mask1)
+    print_time('Image merged', start_t)
+
+    cloned = normal_clone(output, src, full_mask)
+
+    print_time('Image cloned', start_t)
+
     cv2.imshow('cloned', cloned)
     cv2.imwrite('%s/%s' % (img_dir, 'output_shoe.png'), cloned)
 
+    bar = utils.plot_colors_lab(hist, centers)
     bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
     output[0:bar.shape[0], 0:bar.shape[1]] = bar
     cv2.imshow('color transfer', output)
