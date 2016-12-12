@@ -148,6 +148,15 @@ def mask_clone(img_fg, img_bg, mask_fg):
     return mask_img
 
 
+def resize_if_need(src_im, max_cols=800):
+    rows, cols, channels = src_im.shape
+    if cols > max_cols:
+        ratio = float(max_cols) / cols
+        size = (MAX_SAMPLE_COLS, int(ratio * rows))
+        src_im = cv2.resize(src_im, size)
+    return src_im
+
+
 def print_time(msg, start_t):
     """
     print performance info
@@ -164,6 +173,8 @@ if __name__ == '__main__':
     img_dir = 'images'
     src = cv2.imread('%s/%s' % (img_dir, 'matrix.jpg'))
     dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
+
+    dst = resize_if_need(dst, 800)
 
     mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
     mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
