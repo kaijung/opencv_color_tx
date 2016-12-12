@@ -86,7 +86,6 @@ def normal_clone(img_fg, img_bg, mask_fg=None):
     if cols_fg > half_cols_bg:
         ratio = float(half_cols_bg) / cols_fg
         size = (half_cols_bg, int(ratio * rows_fg))
-        # print 'final size:', size
         img_fg = cv2.resize(img_fg, size)
         mask_fg = cv2.resize(mask_fg, size)
 
@@ -96,6 +95,26 @@ def normal_clone(img_fg, img_bg, mask_fg=None):
     # Seamlessly clone src into dst and put the results in output
     cloned_im = cv2.seamlessClone(img_fg, img_bg, mask_fg, center, cv2.NORMAL_CLONE)
     return cloned_im
+
+
+def mask_clone(img_fg, img_bg, mask_fg):
+    rows_fg, cols_fg, _ = img_fg.shape
+    rows_bg, cols_bg, _ = img_bg.shape
+
+    half_cols_bg = cols_bg / 2
+    if cols_fg > half_cols_bg:
+        ratio = float(half_cols_bg) / cols_fg
+        size = (half_cols_bg, int(ratio * rows_fg))
+        img_fg = cv2.resize(img_fg, size)
+        img_bg = cv2.resize(img_bg, size)
+        mask_fg = cv2.resize(mask_fg, size)
+
+    mask_inv = cv2.bitwise_not(mask_fg)
+
+    img_fg = cv2.bitwise_and(img_fg, img_fg, mask=mask_fg)
+    img_bg = cv2.bitwise_and(img_bg, img_bg, mask=mask_inv)
+    mask_img = cv2.add(img_bg, img_fg)
+    return mask_img
 
 
 def print_time(msg, start_t):
@@ -136,6 +155,7 @@ if __name__ == '__main__':
     print_time('Image merged', start_t)
 
     cloned = normal_clone(output, src, full_mask)
+    # cloned = mask_clone(output, src, full_mask)
 
     print_time('Image cloned', start_t)
 
