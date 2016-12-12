@@ -67,10 +67,11 @@ def color_transfer(src_mean, src_stddev, dst_img, dst_masks):
     return cv2.cvtColor(out_img, cv2.COLOR_LAB2BGR)
 
 
-def mix_clone(img_fg, img_bg):
+def normal_clone(img_fg, img_bg, mask_fg):
     rows_fg, cols_fg, _ = img_fg.shape
     rows_bg, cols_bg, _ = img_bg.shape
     half_cols_bg = cols_bg / 2
+    mask_fg = cv2.cvtColor(mask_fg, cv2.COLOR_BGR2GRAY)
 
     # print 'fg shape:', rows_fg, cols_fg
     # print 'bg shape:', rows_bg, cols_bg
@@ -78,18 +79,20 @@ def mix_clone(img_fg, img_bg):
 
     if cols_fg > half_cols_bg:
         ratio = float(half_cols_bg) / cols_fg
-        # print 'half_cols_bg, cols_fg:', half_cols_bg, int(ratio * rows_fg)
-        img_fg = cv2.resize(img_fg, (half_cols_bg, int(ratio * rows_fg)))
+        size = (half_cols_bg, int(ratio * rows_fg))
+        # print 'final size:', size
+        img_fg = cv2.resize(img_fg, size)
+        mask_fg = cv2.resize(mask_fg, size)
 
     # Create an all white mask
-    mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
+    # mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
     # The location of the center of the src in the dst
-    center = (rows_bg / 2, cols_bg / 2)
+    center = (cols_bg / 2, rows_bg / 2)
 
     # Seamlessly clone src into dst and put the results in output
-    # normal_clone = cv2.seamlessClone(obj, im, mask, center, cv2.NORMAL_CLONE)
-    mixed_clone = cv2.seamlessClone(img_fg, img_bg, mask_fg, center, cv2.MIXED_CLONE)
-    return mixed_clone
+    # cloned_im = cv2.seamlessClone(obj, im, mask, center, cv2.MIXED_CLONE)
+    cloned_im = cv2.seamlessClone(img_fg, img_bg, mask_fg, center, cv2.NORMAL_CLONE)
+    return cloned_im
 
 
 if __name__ == '__main__':
@@ -119,7 +122,8 @@ if __name__ == '__main__':
     output = cv2.add(img_bg, img_fg)
     # cv2.imshow('output', output)
 
-    cloned = mix_clone(output, src)
+    full_mask1 = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
+    cloned = normal_clone(output, src, full_mask1)
     cv2.imshow('cloned', cloned)
 
     bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
