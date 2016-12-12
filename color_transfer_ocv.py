@@ -5,13 +5,16 @@ import numpy as np
 import utils
 
 
-MIN_LIGHT_VALUE = 10
+MIN_LIGHT_VALUE = 15
+MAX_LIGHT_VALUE = 230
 
 
 def color_kmeans(src_im, n_clusters=3):
     rows, cols, channels = src_im.shape
     img_lab = cv2.cvtColor(src_im, cv2.COLOR_BGR2LAB)
     img_lab = img_lab.reshape((rows * cols, channels))
+
+    # print 'src_im:', rows, cols, src_im.dtype
     # print 'img_lab:', img_lab.shape, img_lab.dtype
 
     # Define criteria = ( type, max_iter = 10 , epsilon = 1.0 )
@@ -27,7 +30,7 @@ def color_kmeans(src_im, n_clusters=3):
 
     stddev = np.sqrt(compactness / (rows * cols))
     # print 'stddev:', stddev, "centers:", percent_colors[1]
-    filtered_colors = [pc for pc in hist_colors if pc[1][0] > MIN_LIGHT_VALUE]
+    filtered_colors = [pc for pc in hist_colors if pc[1][0] > MIN_LIGHT_VALUE and pc[1][0] < MAX_LIGHT_VALUE]
     return [colors[0] for colors in filtered_colors], [colors[1] for colors in filtered_colors], stddev
 
 
@@ -64,13 +67,38 @@ def color_transfer(src_mean, src_stddev, dst_img, dst_masks):
     return cv2.cvtColor(out_img, cv2.COLOR_LAB2BGR)
 
 
+def mix_clone(img_fg, img_bg):
+    rows_fg, cols_fg, _ = img_fg.shape
+    rows_bg, cols_bg, _ = img_bg.shape
+    half_cols_bg = cols_bg / 2
+
+    # print 'fg shape:', rows_fg, cols_fg
+    # print 'bg shape:', rows_bg, cols_bg
+    # print 'half_cols_bg:', half_cols_bg
+
+    if cols_fg > half_cols_bg:
+        ratio = float(half_cols_bg) / cols_fg
+        # print 'half_cols_bg, cols_fg:', half_cols_bg, int(ratio * rows_fg)
+        img_fg = cv2.resize(img_fg, (half_cols_bg, int(ratio * rows_fg)))
+
+    # Create an all white mask
+    mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
+    # The location of the center of the src in the dst
+    center = (rows_bg / 2, cols_bg / 2)
+
+    # Seamlessly clone src into dst and put the results in output
+    # normal_clone = cv2.seamlessClone(obj, im, mask, center, cv2.NORMAL_CLONE)
+    mixed_clone = cv2.seamlessClone(img_fg, img_bg, mask_fg, center, cv2.MIXED_CLONE)
+    return mixed_clone
+
+
 if __name__ == '__main__':
     img_dir = 'images'
-    src = cv2.imread('%s/%s' % (img_dir, 'fruits.jpg'))
+    src = cv2.imread('%s/%s' % (img_dir, 'ocean_sunset.jpg'))
     dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
 
-    mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
-    mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
+    mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
+    mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
 
     hist, centers, stddev = color_kmeans(src, n_clusters=5)
     bar = utils.plot_colors_lab(hist, centers)
@@ -89,11 +117,13 @@ if __name__ == '__main__':
     img_fg = cv2.bitwise_and(output, output, mask=full_mask)
     img_bg = cv2.bitwise_and(dst, dst, mask=full_mask_inv)
     output = cv2.add(img_bg, img_fg)
+    # cv2.imshow('output', output)
+
+    cloned = mix_clone(output, src)
+    cv2.imshow('cloned', cloned)
 
     bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
     output[0:bar.shape[0], 0:bar.shape[1]] = bar
-
-    # cv2.imwrite('%s/%s' % (img_dir, 'output.jpg'), output)
     cv2.imshow('color transfer', output)
 
     cv2.waitKey(15000)
