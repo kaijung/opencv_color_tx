@@ -70,13 +70,13 @@ def color_transfer(src_mean, src_stddev, dst_img, dst_masks):
     return cv2.cvtColor(out_img, cv2.COLOR_LAB2BGR)
 
 
-def normal_clone(img_fg, img_bg, mask_fg):
+def normal_clone(img_fg, img_bg, mask_fg=None):
     rows_fg, cols_fg, _ = img_fg.shape
     rows_bg, cols_bg, _ = img_bg.shape
 
     # Create an all white mask
-    # mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
-    mask_fg = cv2.cvtColor(mask_fg, cv2.COLOR_BGR2GRAY)
+    if mask_fg is None:
+        mask_fg = 255 * np.ones(img_fg.shape, img_fg.dtype)
 
     # print 'fg shape:', rows_fg, cols_fg
     # print 'bg shape:', rows_bg, cols_bg
@@ -111,7 +111,7 @@ if __name__ == '__main__':
 
     mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
     mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
-    full_mask = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
+    full_mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
 
     start_t = cv2.getTickCount()
     hist, centers, stddev = color_kmeans(src, n_clusters=4)
@@ -120,6 +120,7 @@ if __name__ == '__main__':
 
     mask = cv2.cvtColor(mask_im, cv2.COLOR_BGR2GRAY)
     mask1 = cv2.cvtColor(mask1_im, cv2.COLOR_BGR2GRAY)
+    full_mask = cv2.cvtColor(full_mask_im, cv2.COLOR_BGR2GRAY)
 
     merged_mask = cv2.bitwise_or(mask, mask1)
     merged_mask_inv = cv2.bitwise_not(merged_mask)
