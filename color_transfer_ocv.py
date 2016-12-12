@@ -97,13 +97,13 @@ def normal_clone(img_fg, img_bg, mask_fg):
 
 if __name__ == '__main__':
     img_dir = 'images'
-    src = cv2.imread('%s/%s' % (img_dir, 'ocean_sunset.jpg'))
+    src = cv2.imread('%s/%s' % (img_dir, 'matrix.jpg'))
     dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
 
     mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
     mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
 
-    hist, centers, stddev = color_kmeans(src, n_clusters=5)
+    hist, centers, stddev = color_kmeans(src, n_clusters=4)
     bar = utils.plot_colors_lab(hist, centers)
 
     mask_gray = cv2.cvtColor(mask_im, cv2.COLOR_BGR2GRAY)
@@ -114,21 +114,21 @@ if __name__ == '__main__':
     full_mask = cv2.bitwise_or(mask, mask1)
     full_mask_inv = cv2.bitwise_not(full_mask)
 
-    # output = color_transfer2(centers, stddev, dst, mask1)
     output = color_transfer(centers, stddev, dst, (mask, mask1))
 
     img_fg = cv2.bitwise_and(output, output, mask=full_mask)
     img_bg = cv2.bitwise_and(dst, dst, mask=full_mask_inv)
     output = cv2.add(img_bg, img_fg)
-    # cv2.imshow('output', output)
 
     full_mask1 = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
     cloned = normal_clone(output, src, full_mask1)
     cv2.imshow('cloned', cloned)
+    cv2.imwrite('%s/%s' % (img_dir, 'output_shoe.png'), cloned)
 
     bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
     output[0:bar.shape[0], 0:bar.shape[1]] = bar
     cv2.imshow('color transfer', output)
+    cv2.imwrite('%s/%s' % (img_dir, 'colored_shoe.png'), output)
 
     cv2.waitKey(15000)
     cv2.destroyAllWindows()
