@@ -17,11 +17,7 @@ def color_kmeans(src_bg_im, n_colors=3):
     :param n_colors: number of object's color
     :return: histogram, colors and colors' stddev
     """
-    rows, cols, channels = src_bg_im.shape
-    if cols > MAX_SAMPLE_COLS:
-        ratio = float(MAX_SAMPLE_COLS) / cols
-        size = (MAX_SAMPLE_COLS, int(ratio * rows))
-        src_bg_im = cv2.resize(src_bg_im, size)
+    src_bg_im = resize_if_need(src_bg_im, MAX_SAMPLE_COLS)
 
     rows, cols, channels = src_bg_im.shape
     img_lab = cv2.cvtColor(src_bg_im, cv2.COLOR_BGR2LAB)
@@ -149,10 +145,16 @@ def mask_clone(img_fg, img_bg, mask_fg):
 
 
 def resize_if_need(src_im, max_cols=800):
+    """
+    resize image if image's columns > max_cols
+    :param src_im:
+    :param max_cols:
+    :return: resized image if need
+    """
     rows, cols, channels = src_im.shape
     if cols > max_cols:
         ratio = float(max_cols) / cols
-        size = (MAX_SAMPLE_COLS, int(ratio * rows))
+        size = (max_cols, int(ratio * rows))
         src_im = cv2.resize(src_im, size)
     return src_im
 
