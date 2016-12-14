@@ -17,7 +17,7 @@ def color_kmeans(src_bg_im, n_colors=3):
     :param n_colors: number of object's color
     :return: histogram, colors and colors' stddev
     """
-    src_bg_im = resize_if_need(src_bg_im, MAX_SAMPLE_COLS)
+    src_bg_im = resize_if_necessary(src_bg_im, MAX_SAMPLE_COLS)
 
     rows, cols, channels = src_bg_im.shape
     img_lab = cv2.cvtColor(src_bg_im, cv2.COLOR_BGR2LAB)
@@ -31,7 +31,7 @@ def color_kmeans(src_bg_im, n_colors=3):
     # Set flags (Just to avoid line break in the code)
     flags = cv2.KMEANS_RANDOM_CENTERS
 
-    clusters = n_colors + 1
+    clusters = n_colors + 2
     compactness, labels, centroids = cv2.kmeans(np.float32(img_lab), clusters, None, criteria, 10, flags)
 
     hist = utils.centroid_histogram(labels)
@@ -102,7 +102,7 @@ def normal_clone(img_fg, img_bg, mask_fg=None):
     # print 'bg shape:', rows_bg, cols_bg
     # print 'half_cols_bg:', half_cols_bg
 
-    half_cols_bg = cols_bg / 2
+    half_cols_bg = int(cols_bg / 2)
     if cols_fg > half_cols_bg:
         ratio = float(half_cols_bg) / cols_fg
         size = (half_cols_bg, int(ratio * rows_fg))
@@ -110,7 +110,8 @@ def normal_clone(img_fg, img_bg, mask_fg=None):
         mask_fg = cv2.resize(mask_fg, size)
 
     # The location of the center of the src in the dst
-    center = (cols_bg / 2, rows_bg / 2)
+    center = (int(cols_bg / 2), int(rows_bg / 2))
+    # center = (int(0.5 * cols_bg), int(0.4 * rows_bg))
 
     # Seamlessly clone src into dst and put the results in output
     cloned_im = cv2.seamlessClone(img_fg, img_bg, mask_fg, center, cv2.NORMAL_CLONE)
@@ -144,18 +145,23 @@ def mask_clone(img_fg, img_bg, mask_fg):
     return mask_img
 
 
-def resize_if_need(src_im, max_cols=800):
+def resize_if_necessary(src_im, max_size=800):
     """
     resize image if image's columns > max_cols
     :param src_im:
-    :param max_cols:
+    :param max_size:
     :return: resized image if need
     """
     rows, cols, channels = src_im.shape
-    if cols > max_cols:
-        ratio = float(max_cols) / cols
-        size = (max_cols, int(ratio * rows))
+    if cols > max_size or rows > max_size:
+        if cols > rows:
+            ratio = float(max_size) / cols
+            size = (max_size, int(ratio * rows))
+        else:
+            ratio = float(max_size) / rows
+            size = (int(ratio * cols), max_size)
         src_im = cv2.resize(src_im, size)
+
     return src_im
 
 
@@ -173,10 +179,10 @@ def print_time(msg, start_t):
 
 if __name__ == '__main__':
     img_dir = 'images'
-    src = cv2.imread('%s/%s' % (img_dir, 'matrix.jpg'))
+    src = cv2.imread('%s/%s' % (img_dir, 'BingWallpaper.jpg'))
     dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
 
-    dst = resize_if_need(dst, 800)
+    src = resize_if_necessary(src, max_size=1024)
 
     mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
     mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
