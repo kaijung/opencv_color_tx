@@ -2,6 +2,7 @@
 
 import cv2
 import numpy as np
+import argparse
 import utils
 
 
@@ -178,8 +179,12 @@ def print_time(msg, start_t):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--bg_image", type=str, default="gjl.png", help="background image")
+    args = parser.parse_args()
+
     img_dir = 'images'
-    src = cv2.imread('%s/%s' % (img_dir, 'BingWallpaper.jpg'))
+    src = cv2.imread('%s/%s' % (img_dir, args.bg_image))
     dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
 
     src = resize_if_necessary(src, max_size=1024)
