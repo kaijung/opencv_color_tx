@@ -178,25 +178,10 @@ def print_time(msg, start_t):
     print '%s. I took %d ms' % (msg, took_time)
 
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-b", "--bg_image", type=str, default="gjl.png", help="background image")
-    args = parser.parse_args()
-
-    img_dir = 'images'
-    src = cv2.imread('%s/%s' % (img_dir, args.bg_image))
-    dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
-
+def process_images(src, dst, color_masks_im, full_mask_im):
     src = resize_if_necessary(src, max_size=1024)
 
-    mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
-    mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
-    full_mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
-
-    mask = cv2.cvtColor(mask_im, cv2.COLOR_BGR2GRAY)
-    mask1 = cv2.cvtColor(mask1_im, cv2.COLOR_BGR2GRAY)
-    color_masks = (mask, mask1)
-
+    color_masks = [cv2.cvtColor(msk_im, cv2.COLOR_BGR2GRAY) for msk_im in color_masks_im]
     # use number of colors as clusters
     n_clusters = len(color_masks)
 
@@ -222,18 +207,34 @@ if __name__ == '__main__':
 
     cloned = normal_clone(output, src, full_mask)
     # cloned = mask_clone(output, src, full_mask)
-
     print_time('Image cloned', start_t)
+    bar = utils.plot_colors_lab(hist, centers)
+    bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
+
+    return cloned, output, bar
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-b", "--bg_image", type=str, default="gjl.png", help="background image")
+    args = parser.parse_args()
+
+    img_dir = 'images'
+    src = cv2.imread('%s/%s' % (img_dir, args.bg_image))
+    dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
+
+    mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
+    mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
+    full_mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
+
+    cloned, output, bar = process_images(src, dst, (mask_im, mask1_im), full_mask_im)
 
     cv2.imshow('cloned', cloned)
     cv2.imwrite('%s/%s' % (img_dir, 'output_shoe.png'), cloned)
 
-    bar = utils.plot_colors_lab(hist, centers)
-    bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
     output[0:bar.shape[0], 0:bar.shape[1]] = bar
     cv2.imshow('color transfer', output)
     cv2.imwrite('%s/%s' % (img_dir, 'colored_shoe.png'), output)
 
     cv2.waitKey(15000)
     cv2.destroyAllWindows()
-
