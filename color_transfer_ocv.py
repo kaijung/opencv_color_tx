@@ -207,7 +207,7 @@ if __name__ == '__main__':
 
     full_mask = cv2.cvtColor(full_mask_im, cv2.COLOR_BGR2GRAY)
 
-    merged_mask = cv2.bitwise_or(mask, mask1)
+    merged_mask = reduce(cv2.bitwise_or, color_masks)
     merged_mask_inv = cv2.bitwise_not(merged_mask)
 
     output = color_transfer(centers, stddev, dst, color_masks)
