@@ -223,11 +223,11 @@ if __name__ == '__main__':
     src = cv2.imread('%s/%s' % (img_dir, args.bg_image))
     dst = cv2.imread('%s/%s' % (img_dir, 'shoe.png'))
 
-    mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
-    mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
+    mask1_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask1.png'))
+    mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_mask.png'))
     full_mask_im = cv2.imread('%s/%s' % (img_dir, 'shoe_full_mask1.png'))
 
-    cloned, output, bar = process_images(src, dst, (mask_im, mask1_im), full_mask_im)
+    cloned, output, bar = process_images(src, dst, (mask1_im, mask_im), full_mask_im)
 
     cv2.imshow('cloned', cloned)
     cv2.imwrite('%s/%s' % (img_dir, 'output_shoe.png'), cloned)
