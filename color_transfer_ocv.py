@@ -208,10 +208,10 @@ def process_images(src, dst, color_masks_im, full_mask_im):
     cloned = normal_clone(output, src, full_mask)
     # cloned = mask_clone(output, src, full_mask)
     print_time('Image cloned', start_t)
-    bar = utils.plot_colors_lab(hist, centers)
-    bar = cv2.cvtColor(bar, cv2.COLOR_RGB2BGR)
+    color_bar = utils.plot_colors_lab(hist, centers)
+    color_bar = cv2.cvtColor(color_bar, cv2.COLOR_RGB2BGR)
 
-    return cloned, output, bar
+    return cloned, output, color_bar
 
 
 if __name__ == '__main__':
